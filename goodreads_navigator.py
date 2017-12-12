@@ -1,3 +1,11 @@
+"""
+Note that this file provides the functionality for navigating to pages on Goodreads and scrapping the pages for valid
+giveaway links. The navigator will navigate to pages based on user specified settings, scrap the valid giveaways and
+then log giveaways entered. A giveaway is valid if and only if the user has not yet entered the giveaway and is in a
+genre that the user desires to enter.
+"""
+
+
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
 import configparser
@@ -63,7 +71,7 @@ def get_genres_to_parse():
     """
     This method calculates which genres' giveaways to enter based on user set ignore preferences.
 
-    :return: A list of URL to genre pages whoses giveaways are to be entered.
+    :return: A list of URL to genre pages whose giveaways are to be entered.
     """
 
     # Open the ignore settings file for reading.
@@ -85,27 +93,59 @@ def get_genres_to_parse():
     return genres_to_parse
 
 
-def get_href_list_page(browser, page_link):
+def get_giveaway_links(browser, page_link):
+    """
+    Navigates to a page using the given URL using the browser and then parses through all the buttons on the page for
+    the the link te the assigned giveaway and returns all the valid URLs as a list.
+
+    :param browser: The browser to use to navigate.
+    :param page_link: A URL link to the page containing the giveaway buttons.
+    :return: A list containing the URLs of all the giveaways on the passed page.
+    """
+    # Navigate to the passed page.
     browser.get(page_link)
     giveaway_url_list = []
+
+    # Find all the references to the buttons(in this case they are gr-buttons.
     giveaway_list_elements = browser.find_elements_by_class_name("gr-button")
+
+    # Go through every every button and add their href to the list if the href is not empty.
     for item in giveaway_list_elements:
         if item.get_attribute("href") is not None:
             giveaway_url_list.append(item.get_attribute("href"))
+
     return giveaway_url_list
 
 
-def get_all_href_list_genre(browser, root_link):
+def get_all_giveaways_by_genre(browser, root_link):
+    """
+    For a given genre, this page will try to navigate every possible page number for that specific genre until it
+    reaches a page that does not contain any more giveaway links. Returns all valid giveaway links for that genre.
+
+    E.g. for genre = "Art" it will navigate to the 1st
+    art page, the 2nd page, and so on until there are no more pages.
+
+    :param browser:
+    :param root_link:
+    :return:
+    """
+
+    # Start at 1 and navigate to every page, incrementing page number until you reach a page that no longer contains
+    # buttons for giveaways.
     page_number = 1
     giveaway_url_list = []
     while True:
+        # Navigate to the correct page using the page number.
         url = root_link + "&page=" + str(page_number)
-        giveaway_urls = get_href_list_page(browser, url)
+        # Attempt to get the giveaways URLs and if there are no URLs that means you have reached the end. Else you keep
+        # adding it to the result list.
+        giveaway_urls = get_giveaway_links(browser, url)
         if len(giveaway_urls) == 0:
             break
         else:
             giveaway_url_list.extend(giveaway_urls)
         page_number += 1
+
     return giveaway_url_list
 
 
@@ -117,6 +157,8 @@ def enter_giveaways(browser, giveaway_url_list):
     :param giveaway_url_list: The URL address of the giveaway.
     """
     for giveaway in giveaway_url_list:
+        # Try to navigate through all the approriate buttons and click them. If anything turns out to missing, just skip
+        # the giveaway.
         try:
             # Navigate to the correct URL.
             browser.get(giveaway)
@@ -129,17 +171,5 @@ def enter_giveaways(browser, giveaway_url_list):
             browser.find_element_by_name("entry_terms").click()
             # Click the submit button to enter the giveaway.
             browser.find_element_by_name("commit").click()
-        except(NoSuchElementException):
+        except NoSuchElementException:
             continue
-
-def main():
-    browser = setup_browser(False)
-    all_urls = []
-    for genre in get_genres_to_parse():
-        all_urls.extend(get_all_href_list_genre(browser, genre))
-        enter_giveaways(browser, all_urls)
-        all_urls.clear()
-    browser.close()
-
-
-main()
