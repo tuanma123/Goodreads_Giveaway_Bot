@@ -14,18 +14,24 @@ import time
 import os
 
 
-def setup_log_list(log_path):
-    log_list = []
+def setup_entries_map(log_path):
+    entries_map = {}
     for log_file in os.listdir(log_path):
         for line in open(log_path + "/" + log_file):
-            log_list.append(line)
-    return log_list
+            line = line.replace("\n", "")
+            giveaway = line[:line.find(",")]
+            genre = log_file[:-4]
+            if genre in entries_map:
+                entries_map[genre].append(giveaway)
+            else:
+                entries_map[genre] = []
+    return entries_map
 
 
 config = configparser.ConfigParser()
 config.read("settings.ini")
-success_list = setup_log_list("logs/successful")
-failure_list = setup_log_list("logs/failure")
+
+previous_entries = {**setup_entries_map("logs/successful"), **setup_entries_map("logs/failure")}
 
 
 def setup_browser(is_headless):
@@ -117,7 +123,6 @@ def get_giveaway_links(browser, page_link):
     :return: A list containing the URLs of all the giveaways on the passed page.
     """
     # Navigate to the passed page.
-    print(page_link)
     browser.get(str(page_link))
     giveaway_url_list = []
 
@@ -178,6 +183,8 @@ def enter_giveaways(browser, giveaway_url_list, genre):
     for giveaway in giveaway_url_list:
         # Try to navigate through all the appropriate buttons and click them. If anything turns out to missing,
         # just skip the giveaway.
+        if giveaway in previous_entries:
+            continue
         try:
             # Navigate to the correct URL.
             browser.get(str(giveaway))
