@@ -180,6 +180,13 @@ def enter_giveaways(browser, giveaway_url_list, genre):
     success_log = open("logs/successful/" + genre + ".csv", "w")
     failure_log = open("logs/failure/" + genre + ".csv", "w")
 
+    # Get the user setting that determines whether to log or not.
+    logging = config["logging"]["logging"].lower()
+    if logging is "true":
+        logging = True
+    else:
+        logging = False
+
     for giveaway in giveaway_url_list:
         # Try to navigate through all the appropriate buttons and click them. If anything turns out to missing,
         # just skip the giveaway.
@@ -205,17 +212,19 @@ def enter_giveaways(browser, giveaway_url_list, genre):
                 # Click the submit button to enter the giveaway.
                 browser.find_element_by_name("commit").click()
 
-                # Everything worked so log the giveaway entered with a timestamp.
-                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
-                success_log.write(giveaway + "," + str(timestamp) + "\n")
-            else:
+                if logging:
+                    # Everything worked so log the giveaway entered with a timestamp.
+                    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                    success_log.write(giveaway + "," + str(timestamp) + "\n")
+            elif user_country in countries and logging:
                 # The user is in a invalid log, log that with a stamp in failure logs.
                 timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
                 failure_log.write(giveaway + "," + str(timestamp) + "," + "INVALID_COUNTRY\n")
         except (exceptions.NoSuchElementException, exceptions.WebDriverException):
-            # Some browsing error occurred, log that in failure logs with a timestamp.
-            timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
-            failure_log.write(giveaway + "," + str(timestamp) + "," + "BROWSER_ERROR\n")
+            if logging:
+                # Some browsing error occurred, log that in failure logs with a timestamp.
+                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                failure_log.write(giveaway + "," + str(timestamp) + "," + "BROWSER_ERROR\n")
             continue
     failure_log.close()
     success_log.close()
