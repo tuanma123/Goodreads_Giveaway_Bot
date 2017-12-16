@@ -6,12 +6,26 @@ genre that the user desires to enter.
 """
 
 
-from selenium.common.exceptions import NoSuchElementException
+import selenium.common.exceptions as exceptions
 from selenium import webdriver
 import configparser
+import datetime
+import time
+import os
+
+
+def setup_log_list(log_path):
+    log_list = []
+    for log_file in os.listdir(log_path):
+        for line in open(log_path + "/" + log_file):
+            log_list.append(line)
+    return log_list
+
 
 config = configparser.ConfigParser()
 config.read("settings.ini")
+success_list = setup_log_list("logs/successful")
+failure_list = setup_log_list("logs/failure")
 
 
 def setup_browser(is_headless):
@@ -103,7 +117,8 @@ def get_giveaway_links(browser, page_link):
     :return: A list containing the URLs of all the giveaways on the passed page.
     """
     # Navigate to the passed page.
-    browser.get(page_link)
+    print(page_link)
+    browser.get(str(page_link))
     giveaway_url_list = []
 
     # Find all the references to the buttons(in this case they are gr-buttons.
@@ -149,27 +164,51 @@ def get_all_giveaways_by_genre(browser, root_link):
     return giveaway_url_list
 
 
-def enter_giveaways(browser, giveaway_url_list):
+def enter_giveaways(browser, giveaway_url_list, genre):
     """
     This method takes a passed in giveaway URL and enters said giveaway.
 
     :param browser: The browser to use to navigate.
     :param giveaway_url_list: The URL address of the giveaway.
     """
+    # Open the log files for the genre.
+    success_log = open("logs/successful/" + genre + ".csv", "w")
+    failure_log = open("logs/failure/" + genre + ".csv", "w")
+
     for giveaway in giveaway_url_list:
-        # Try to navigate through all the approriate buttons and click them. If anything turns out to missing, just skip
-        # the giveaway.
+        # Try to navigate through all the appropriate buttons and click them. If anything turns out to missing,
+        # just skip the giveaway.
         try:
             # Navigate to the correct URL.
-            browser.get(giveaway)
+            browser.get(str(giveaway))
 
-            # Select the first cached address on the user's account.
-            browser.find_element_by_id("addressSelect3262933").click()
+            # Get the list of valid countries and format it appropriately by deleting all the extra text and weird
+            # characters. Check if the user's country is valid in the giveaway and attempt to enter it if it is.
+            # Whatever outcomes occurs, log it in the repository.
+            user_country = config["credentials"]["country"]
+            countries = browser.find_element_by_class_name("mainContentContainer").text.split("\n")[3][66:].\
+                replace(".", "").replace(" and", ",").split(", ")
+            if user_country in countries:
+                # Select the first cached address on the user's account.
+                browser.find_element_by_id("addressSelect3262933").click()
 
-            browser.find_element_by_name("want_to_read").click()
-            # Click the button that agrees to the terms of entry.
-            browser.find_element_by_name("entry_terms").click()
-            # Click the submit button to enter the giveaway.
-            browser.find_element_by_name("commit").click()
-        except NoSuchElementException:
+                browser.find_element_by_name("want_to_read").click()
+                # Click the button that agrees to the terms of entry.
+                browser.find_element_by_name("entry_terms").click()
+                # Click the submit button to enter the giveaway.
+                browser.find_element_by_name("commit").click()
+
+                # Everything worked so log the giveaway entered with a timestamp.
+                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                success_log.write(giveaway + "," + str(timestamp) + "\n")
+            else:
+                # The user is in a invalid log, log that with a stamp in failure logs.
+                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                failure_log.write(giveaway + "," + str(timestamp) + "," + "INVALID_COUNTRY\n")
+        except (exceptions.NoSuchElementException, exceptions.WebDriverException):
+            # Some browsing error occurred, log that in failure logs with a timestamp.
+            timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+            failure_log.write(giveaway + "," + str(timestamp) + "," + "BROWSER_ERROR\n")
             continue
+    failure_log.close()
+    success_log.close()
