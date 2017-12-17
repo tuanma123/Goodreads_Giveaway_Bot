@@ -7,7 +7,7 @@ config.read("settings.ini")
 
 # Get the user specified setting that determines what kind of browser to use.
 is_headless = config["browsing"]["headless"].lower()
-if is_headless is "true":
+if is_headless == "true":
     is_headless = True
 else:
     is_headless = False

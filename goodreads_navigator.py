@@ -16,6 +16,12 @@ import os
 
 def setup_entries_map(log_path):
     entries_map = {}
+    if not os.path.exists("logs/" + config["credentials"]["username"]):
+        os.makedirs("logs/" + config["credentials"]["username"])
+    if not os.path.exists("logs/" + config["credentials"]["username"] + "/successful"):
+        os.makedirs("logs/" + config["credentials"]["username"] + "/successful")
+    if not os.path.exists("logs/" + config["credentials"]["username"] + "/failure"):
+        os.makedirs("logs/" + config["credentials"]["username"] + "/failure")
     for log_file in os.listdir(log_path):
         for line in open(log_path + "/" + log_file):
             line = line.replace("\n", "")
@@ -31,7 +37,8 @@ def setup_entries_map(log_path):
 config = configparser.ConfigParser()
 config.read("settings.ini")
 
-previous_entries = {**setup_entries_map("logs/successful"), **setup_entries_map("logs/failure")}
+previous_entries = {**setup_entries_map("logs/" + config["credentials"]["username"] + "/successful"),
+                    **setup_entries_map("logs/" + config["credentials"]["username"] + "/failure")}
 
 
 def setup_browser(is_headless):
@@ -177,12 +184,12 @@ def enter_giveaways(browser, giveaway_url_list, genre):
     :param giveaway_url_list: The URL address of the giveaway.
     """
     # Open the log files for the genre.
-    success_log = open("logs/successful/" + genre + ".csv", "w")
-    failure_log = open("logs/failure/" + genre + ".csv", "w")
+    success_log = open("logs/" + config["credentials"]["username"] + "/successful/" + genre + ".csv", "w")
+    failure_log = open("logs/" + config["credentials"]["username"] + "/failure/" + genre + ".csv", "w")
 
     # Get the user setting that determines whether to log or not.
     logging = config["logging"]["logging"].lower()
-    if logging is "true":
+    if logging == "true":
         logging = True
     else:
         logging = False
@@ -204,7 +211,8 @@ def enter_giveaways(browser, giveaway_url_list, genre):
                 replace(".", "").replace(" and", ",").split(", ")
             if user_country in countries:
                 # Select the first cached address on the user's account.
-                browser.find_element_by_id("addressSelect3262933").click()
+                browser.find_element_by_class_name("gr-button--small").click()
+
 
                 browser.find_element_by_name("want_to_read").click()
                 # Click the button that agrees to the terms of entry.
@@ -216,10 +224,11 @@ def enter_giveaways(browser, giveaway_url_list, genre):
                     # Everything worked so log the giveaway entered with a timestamp.
                     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
                     success_log.write(giveaway + "," + str(timestamp) + "\n")
-            elif user_country in countries and logging:
-                # The user is in a invalid log, log that with a stamp in failure logs.
-                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
-                failure_log.write(giveaway + "," + str(timestamp) + "," + "INVALID_COUNTRY\n")
+            else:
+                if logging:
+                    # The user is in a invalid log, log that with a stamp in failure logs.
+                    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                    failure_log.write(giveaway + "," + str(timestamp) + "," + "INVALID_COUNTRY\n")
         except (exceptions.NoSuchElementException, exceptions.WebDriverException):
             if logging:
                 # Some browsing error occurred, log that in failure logs with a timestamp.
