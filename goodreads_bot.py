@@ -14,6 +14,7 @@ else:
 
 browser = navigator.setup_browser(is_headless)
 for genre in navigator.get_genres_to_parse():
-    genre_alone = genre.replace("https://www.goodreads.com/giveaway/genre/", "").replace("?all_countries=true", "")
+    genre_alone = genre.replace("https://www.goodreads.com/giveaway/genre/", "").replace("?all_countries=true", "").\
+        replace("%20"," ")
     navigator.enter_giveaways(browser, navigator.get_all_giveaways_by_genre(browser, genre), genre_alone)
 browser.close()

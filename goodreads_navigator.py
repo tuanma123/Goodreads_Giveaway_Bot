@@ -1,8 +1,8 @@
 """
-Note that this file provides the functionality for navigating to pages on Goodreads and scrapping the pages for valid
-giveaway links. The navigator will navigate to pages based on user specified settings, scrap the valid giveaways and
-then log giveaways entered. A giveaway is valid if and only if the user has not yet entered the giveaway and is in a
-genre that the user desires to enter.
+Note that this file provides the functionality for navigating to pages on Goodreads and scrapping
+the pages for valid giveaway links. The navigator will navigate to pages based on user specified
+settings, scrap the valid giveaways and then log giveaways entered. A giveaway is valid if and only
+if the user has not yet entered the giveaway and is in a genre that the user desires to enter.
 """
 
 
@@ -12,6 +12,83 @@ import configparser
 import datetime
 import time
 import os
+
+import os
+import configparser
+
+
+def setup_user_settings():
+    """
+    This method crawls through the current directory and makes a list of maps, where each contains
+    the user specified information from the ini files.
+
+    :return: A list of maps containg the user settings from every ini file.
+    """
+    ini_list = []
+    config = configparser.ConfigParser()
+    for file in os.listdir(os.getcwd()):
+        if file.endswith(".ini"):
+            config.read(file)
+            username = config["credentials"]["username"]
+            password = config["credentials"]["password"]
+            country = config["credentials"]["country"]
+            logging = config["settings"]["logging"].lower() == "true"
+            headless = config["settings"]["headless"].lower() == "true"
+            ignore_list = []
+            for item in config["ignore"]:
+                ignore_list.append(config["ignore"][item])
+            user_map = {"uesrname":username, "password":password, "country":country,
+                        "logging": logging, "headless":headless, "ignore":ignore_list}
+            ini_list.append(user_map)
+    return ini_list
+
+
+def setup_entries_map(user_settings):
+    log_path = os.getcwd() + "/logs"
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+    entries_map = {}
+    if not os.path.exists("logs/" + user_settings["username"]):
+        os.makedirs("logs/" + user_settings["username"])
+    if not os.path.exists("logs/" + user_settings["username"] + "/successful"):
+        os.makedirs("logs/" + user_settings["username"] + "/successful")
+    if not os.path.exists("logs/" + user_settings["username"] + "/failure"):
+        os.makedirs("logs/" + user_settings["username"] + "/failure")
+    for log_file in os.listdir(log_path):
+        for line in open(log_path + "/" + log_file):
+            line = line.replace("\n", "")
+            giveaway = line[:line.find(",")]
+            genre = log_file[:-4]
+            if genre in entries_map:
+                entries_map[genre].append(giveaway)
+            else:
+                entries_map[genre] = []
+    return entries_map
+
+def setup_user_settings():
+    """
+    This method crawls through the current directory and makes a list of maps, where each contains
+    the user specified information from the ini files.
+
+    :return: A list of maps containg the user settings from every ini file.
+    """
+    ini_list = []
+    config = configparser.ConfigParser()
+    for file in os.listdir(os.getcwd()):
+        if file.endswith(".ini"):
+            config.read(file)
+            username = config["credentials"]["username"]
+            password = config["credentials"]["password"]
+            country = config["credentials"]["country"]
+            logging = config["settings"]["logging"].lower() == "true"
+            headless = config["settings"]["headless"].lower() == "true"
+            ignore_list = []
+            for item in config["ignore"]:
+                ignore_list.append(config["ignore"][item])
+            user_map = {"uesrname":username, "password":password, "country":country,
+                        "logging": logging, "headless":headless, "ignore":ignore_list}
+            ini_list.append(user_map)
+    return ini_list
 
 
 def setup_entries_map(log_path):
@@ -184,8 +261,9 @@ def enter_giveaways(browser, giveaway_url_list, genre):
     :param giveaway_url_list: The URL address of the giveaway.
     """
     # Open the log files for the genre.
-    success_log = open("logs/" + config["credentials"]["username"] + "/successful/" + genre + ".csv", "w")
-    failure_log = open("logs/" + config["credentials"]["username"] + "/failure/" + genre + ".csv", "w")
+
+    success_log = open("logs/" + config["credentials"]["username"] + "/successful/" + genre + ".csv", "w+")
+    failure_log = open("logs/" + config["credentials"]["username"] + "/failure/" + genre + ".csv", "w+")
 
     # Get the user setting that determines whether to log or not.
     logging = config["logging"]["logging"].lower()
