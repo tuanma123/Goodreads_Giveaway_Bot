@@ -1,20 +1,26 @@
-#!/usr/bin/env python
+"""
+This file acts as the main script for this Goodreads bot. Run this file to run the program for
+every user that has a settings file.
+"""
 import goodreads_navigator as navigator
-import configparser
 
-config = configparser.ConfigParser()
-config.read("settings.ini")
+# Get the user settings for every user and then run the program for every user.
+user_settings = navigator.setup_user_settings()
+for user in user_settings:
+    # Get all the user parameters from the map.
+    username = user["username"]
+    password = user["password"]
+    country = user["country"]
+    logging = user["logging"]
+    headless = user["headless"]
+    ignore_list = user["ignore"]
 
-# Get the user specified setting that determines what kind of browser to use.
-is_headless = config["browsing"]["headless"].lower()
-if is_headless == "true":
-    is_headless = True
-else:
-    is_headless = False
-
-browser = navigator.setup_browser(is_headless)
-for genre in navigator.get_genres_to_parse():
-    genre_alone = genre.replace("https://www.goodreads.com/giveaway/genre/", "").replace("?all_countries=true", "").\
-        replace("%20"," ")
-    navigator.enter_giveaways(browser, navigator.get_all_giveaways_by_genre(browser, genre), genre_alone)
-browser.close()
+    # Setup the browser for the user and then navigate through their desired giveaways and enter
+    # them accordingly.
+    browser = navigator.setup_browser(headless, username, password)
+    for genre in navigator.get_genres_to_parse(ignore_list):
+        genre_alone = genre.replace("https://www.goodreads.com/giveaway/genre/", "").replace(
+            "?all_countries=true", "")
+        navigator.enter_giveaways(browser, navigator.get_giveaway_links(browser, genre),
+                                  genre_alone, username, country, logging)
+    browser.close()
