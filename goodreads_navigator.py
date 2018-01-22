@@ -169,6 +169,12 @@ def get_giveaway_links(browser, page_link):
 
     return giveaway_url_list
 
+def is_amazon(source_code):
+    for line in source_code:
+        if "Your Amazon Account" in line:
+            return True
+    return False
+
 
 def enter_giveaways(browser, giveaway_url_list, genre, username, user_country, logging):
     """
@@ -182,9 +188,9 @@ def enter_giveaways(browser, giveaway_url_list, genre, username, user_country, l
     :return:
     """
     # Open the log files for the genre.
+    previous_entries = setup_entries_map(username)
     success_log = open("logs/" + username + "/successful/" + genre + ".csv", "a")
     failure_log = open("logs/" + username + "/failure/" + genre + ".csv", "a")
-    previous_entries = setup_entries_map(username)
 
     for giveaway in giveaway_url_list:
         # Try to navigate through all the appropriate buttons and click them. If anything turns out
@@ -194,38 +200,29 @@ def enter_giveaways(browser, giveaway_url_list, genre, username, user_country, l
         try:
             # Navigate to the correct URL.
             browser.get(str(giveaway))
-
-            # Get the list of valid countries and format it appropriately by deleting all the extra
-            # text and weird characters. Check if the user's country is valid in the giveaway and
-            # attempt to enter it if it is. Whatever outcomes occurs, log it in the repository.
-            countries = browser.find_element_by_class_name("mainContentContainer").text. \
-                split("\n")[3][66:].replace(".", "").replace(" and", ",").split(", ")
-            if user_country in countries:
+            # Get the source code for the giveaway page.
+            source = browser.page_source.split("\n")
+            # Check if the giveaway is for a ebook from Amazon or a physical book.
+            if is_amazon(source):
+                browser.find_element_by_name("entry_terms").click()
+                # Click the submit button to enter the giveaway.
+                browser.find_element_by_id("giveawaySubmitButton").click()
+            else:
                 # Select the first cached address on the user's account.
                 browser.find_element_by_class_name("gr-button--small").click()
-                browser.find_element_by_name("want_to_read").click()
                 # Click the button that agrees to the terms of entry.
                 browser.find_element_by_name("entry_terms").click()
                 # Click the submit button to enter the giveaway.
                 browser.find_element_by_name("commit").click()
 
-                if logging:
-                    # Everything worked so log the giveaway entered with a timestamp.
-                    timestamp = datetime.datetime.fromtimestamp(time.time()).\
-                        strftime('%m-%d-%Y %H:%M:%S')
-                    success_log.write(giveaway + "," + str(timestamp) + "\n")
-            else:
-                if logging:
-                    # The user is in a invalid log, log that with a stamp in failure logs.
-                    timestamp = datetime.datetime.fromtimestamp(time.time()).\
-                        strftime('%m-%d-%Y %H:%M:%S')
-                    failure_log.write(giveaway + "," + str(timestamp) + "," + "INVALID_COUNTRY\n")
+            if logging:
+                # Everything worked so log the giveaway entered with a timestamp.
+                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                success_log.write(giveaway + "," + str(timestamp) + "\n")
         except (exceptions.NoSuchElementException, exceptions.WebDriverException):
-            pass
             if logging:
                 # Some browsing error occurred, log that in failure logs with a timestamp.
-                timestamp = datetime.datetime.fromtimestamp(time.time()).\
-                    strftime('%m-%d-%Y %H:%M:%S')
+                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
                 failure_log.write(giveaway + "," + str(timestamp) + "," + "BROWSER_ERROR\n")
             continue
     failure_log.close()
