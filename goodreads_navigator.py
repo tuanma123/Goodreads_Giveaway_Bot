@@ -87,8 +87,8 @@ def setup_browser(is_headless, username, password):
     options = webdriver.ChromeOptions()
     options.add_experimental_option('prefs', {'credentials_enable_service': False})
     # The parameter value determines whether or not the browser is visually shown.
-    if is_headless:
-        options.add_argument("headless")
+    # if is_headless:
+    #     options.add_argument("headless")
     browser = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=options)
 
     # Navigate to the Goodreads website and then
