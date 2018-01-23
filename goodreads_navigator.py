@@ -169,7 +169,13 @@ def get_giveaway_links(browser, page_link):
 
     return giveaway_url_list
 
+
 def is_amazon(source_code):
+    """
+    Method checks whether a given book is a physical book or a ebook giveaway for a linked Amazon account.
+    :param source_code:
+    :return:
+    """
     for line in source_code:
         if "Your Amazon Account" in line:
             return True
