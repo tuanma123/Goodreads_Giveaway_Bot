@@ -12,6 +12,7 @@ import datetime
 import time
 import os
 import configparser
+import platform
 
 
 def setup_user_settings():
@@ -34,8 +35,8 @@ def setup_user_settings():
             ignore_list = []
             for item in config["ignore"]:
                 ignore_list.append(config["ignore"][item])
-            user_map = {"username":username, "password":password, "country":country,
-                        "logging": logging, "headless":headless, "ignore":ignore_list}
+            user_map = {"username": username, "password": password, "country": country,
+                        "logging": logging, "headless": headless, "ignore": ignore_list}
             ini_list.append(user_map)
     return ini_list
 
@@ -87,9 +88,16 @@ def setup_browser(is_headless, username, password):
     options = webdriver.ChromeOptions()
     options.add_experimental_option('prefs', {'credentials_enable_service': False})
     # The parameter value determines whether or not the browser is visually shown.
-    # if is_headless:
-    #     options.add_argument("headless")
-    browser = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=options)
+    print(is_headless)
+    if is_headless:
+        options.add_argument("headless")
+
+    driver = ""
+    if platform.platform() == "Windows":
+        driver = "chromedriver.exe"
+    else:
+        driver = "chromedriver"
+    browser = webdriver.Chrome(executable_path=driver, chrome_options=options)
 
     # Navigate to the Goodreads website and then
     browser.get("https://www.goodreads.com/user/sign_in?source=home")
@@ -129,7 +137,7 @@ def get_genres_to_parse(ignore_list):
 
     :return: A list of URL to genre pages whose giveaways are to be entered.
     """
-    # Get a list of all avaiable genres in Goodreads.
+    # Get a list of all available genres in Goodreads.
     all_genres = get_genre_list()
     # Create a list to store the URL for each of the valid genres.
     genres_to_parse = []
@@ -223,12 +231,14 @@ def enter_giveaways(browser, giveaway_url_list, genre, username, user_country, l
 
             if logging:
                 # Everything worked so log the giveaway entered with a timestamp.
-                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                timestamp = datetime.datetime.fromtimestamp(time.time())\
+                    .strftime('%m-%d-%Y %H:%M:%S')
                 success_log.write(giveaway + "," + str(timestamp) + "\n")
         except (exceptions.NoSuchElementException, exceptions.WebDriverException):
             if logging:
                 # Some browsing error occurred, log that in failure logs with a timestamp.
-                timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%m-%d-%Y %H:%M:%S')
+                timestamp = datetime.datetime.fromtimestamp(time.time())\
+                    .strftime('%m-%d-%Y %H:%M:%S')
                 failure_log.write(giveaway + "," + str(timestamp) + "," + "BROWSER_ERROR\n")
             continue
     failure_log.close()

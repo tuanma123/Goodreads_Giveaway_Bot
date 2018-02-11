@@ -11,8 +11,9 @@ for user in user_settings:
     username = user["username"]
     password = user["password"]
     country = user["country"]
-    logging = user["logging"] == "true"
-    headless = user["headless"] == "true"
+    logging = user["logging"]
+    print(logging)
+    headless = user["headless"]
     ignore_list = user["ignore"]
 
     # Setup the browser for the user and then navigate through their desired giveaways and enter
